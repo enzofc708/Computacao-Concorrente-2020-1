@@ -1,11 +1,15 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <pthread.h>
-#include <time.h>
+#include "timer.h"
 
+
+//struct passada como argumento para a função executada pela thread
 typedef struct meus_args{
-	int* vetor;
+	int id;
 } Args;
+
+//variaveis globais
 
 int* array;
 int tamArray;
@@ -75,16 +79,23 @@ void mergeSort(int arr[], int l, int r) // "l" é o indice da array da esquerda 
 }
 
 //função que controla a divisão da tarefa para as threads
-void* mergeSortThread(void *args){
-	int id = *(int *) args;
+void *mergeSortThread(void *args){
+	Args* meu_arg = (Args *) args;
+	int id = meu_arg->id;
 	int inicio = id * tamSubArray;
 	int fim = (id + 1) * tamSubArray - 1;
+	int meio = inicio + (fim - inicio) / 2;
 	if(fim >= tamArray - 1){ //controla o resto da matriz caso o numero de threads não seja
-		mergeSort(array, inicio, tamArray - 1); //múltiplo do tamanho da array
+		mergeSort(array, inicio, meio);//múltiplo do tamanho da array
+		mergeSort(array, meio+1, tamArray - 1);
+		merge(array, inicio, meio, tamArray - 1);
 	}
 	else{
-		mergeSort(array, inicio, fim);
+		mergeSort(array, inicio, meio);//múltiplo do tamanho da array
+		mergeSort(array, meio+1, fim);
+		merge(array, inicio, meio, fim);
 	}
+	pthread_exit(NULL);
 } 
 
 // função simples para printar o conteúdo da array para testes
@@ -98,6 +109,9 @@ void printArray(int A[], int size){
 
 
 int main(int argc, char** argv){
+
+	double start, finish, elapsed; //contagem do tempo
+
 	if(argc != 3){
 		printf("Uso: ./%s <NUM_THREADS> <TAM_ARRAY>\n", argv[0]);
 		exit(-1);
@@ -106,26 +120,25 @@ int main(int argc, char** argv){
 	numThreads = atoi(argv[1]);
 	tamArray = atoi(argv[2]);
 	pthread_t tid[numThreads];
-	int ids[numThreads];
 
-	array = (int *) malloc(sizeof(int) * tamArray);
+	array = (int *) malloc(sizeof(int) * tamArray); //alocação de memória para a matriz
 	if(array == NULL) {puts("Erro no  malloc"); exit(-1);}
 
-	srand(time(0));
-	for(int i = 0; i < tamArray; i++){
+	for(int i = 0; i < tamArray; i++){ //preenchendo a matriz
 		array[tamArray - i - 1] = i;
 	}
-	puts("Array antes da ordenacao");
-	printArray(array, tamArray);
+	//puts("Array antes da ordenacao");
+	//printArray(array, tamArray);
 
 	tamSubArray = tamArray / numThreads;
 
-	for(int i = 0; i < numThreads; i++)
-		ids[i] = i;
+	GET_TIME(start);
 
-	//divide o array em partes iguais
+	//inicializando as threads
 	for(int i = 0; i < numThreads; i++){
-		if(pthread_create(tid + i, NULL, mergeSortThread, (void *) ids + i))
+		Args *meu_arg = (Args *) malloc(sizeof(Args));
+		meu_arg->id = i;
+		if(pthread_create(tid + i, NULL, mergeSortThread, (void *) meu_arg))
       		puts("Erro no pthread");
 	}
 
@@ -133,7 +146,15 @@ int main(int argc, char** argv){
 		pthread_join(*(tid + i), NULL);
 	}
 
-	mergeSort(array, 0, tamArray - 1);
-	puts("Array apos a ordenacao");
-	printArray(array, tamArray);
+	//fazendo o merge das partes finais
+	merge(array, 0, (tamArray / 2 - 1) / 2, tamArray / 2 - 1); 
+    merge(array, tamArray / 2, tamArray/2 + (tamArray-1-tamArray/2)/2, tamArray - 1); 
+    merge(array, 0, (tamArray - 1)/2, tamArray - 1);
+	
+	GET_TIME(finish);
+	elapsed = finish - start;
+
+	//puts("Array apos a ordenacao");
+	//printArray(array, tamArray);
+	printf("tempo: %lf", elapsed);
 }
