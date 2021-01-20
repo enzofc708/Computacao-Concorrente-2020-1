@@ -59,8 +59,9 @@ void FimEscr (int id) {
 //thread leitora
 void * leitor (void * arg) {
   int *id = (int *) arg;
-  int media = 0;
+  int media;
   while(1) {
+    media = 0;
     InicLeit(*id);
     pthread_mutex_lock(&mutex);
     printf("Vetor encontrado por L{%d}:\n", *id);
@@ -69,8 +70,9 @@ void * leitor (void * arg) {
       printf("%d, ",vetor[i]);
       media += vetor[i];
     }
+    media += vetor[9];
     printf("%d]\n", vetor[9]);
-    printf("Media: %.2f\n", (media+vetor[9])/10.0);
+    printf("Media: %.2f\n", media/10.0);
     pthread_mutex_unlock(&mutex);
     FimLeit(*id);
     sleep(1);
