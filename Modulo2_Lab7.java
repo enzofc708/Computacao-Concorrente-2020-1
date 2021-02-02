@@ -1,13 +1,13 @@
 import java.util.Random;
 
 class MeuBuffer{ //classe que armazena o buffer
-  public static int[] arr = {-1,-1,-1,-1,-1,-1,-1,-1,-1,-1}; //nosso buffer armazenará apenas inteiros
-  private int elementos;
+  private static int[] arr = {-1,-1,-1,-1,-1,-1,-1,-1,-1,-1}; //nosso buffer armazenará apenas inteiros
+  private static int elementos = 0;
 
 
   MeuBuffer(){}
 
-  public static void printar(){ //mostra os elementos do buffer
+  public static void print(){ //mostra os elementos do buffer
     System.out.print("Buffer: ");
     for(int i = 0; i < 10; i++){
       System.out.print(arr[i] + " ");
@@ -15,7 +15,7 @@ class MeuBuffer{ //classe que armazena o buffer
     System.out.println("");
   }
 
-  public void inserir(int indice, int elemento){ //insere um elemento no buffer
+  public static void inserir(int indice, int elemento){ //insere um elemento no buffer
     if(arr[indice] != -1){
       System.out.println("Erro, posicao " + indice + " ocupada");
     }
@@ -26,7 +26,7 @@ class MeuBuffer{ //classe que armazena o buffer
     }
   }
 
-  public void retirar(int indice){ //remove um elemento do buffer
+  public static void retirar(int indice){ //remove um elemento do buffer
     if(arr[indice] == -1){
       System.out.println("Erro, posicao " + indice + " vazia");
     }
@@ -37,7 +37,7 @@ class MeuBuffer{ //classe que armazena o buffer
     }
   }
 
-  public int getElementos(){ //retorna o num de elementos no buffer
+  public static int getElementos(){ //retorna o num de elementos no buffer
     return elementos; 
   }
 
@@ -45,18 +45,19 @@ class MeuBuffer{ //classe que armazena o buffer
 
 // Monitor
 class CP {
-  private int cons, prods;  
+  private int cons, prods;
+  public static int contador;  
   
   // Construtor
   CP() { 
      this.cons = 0; //consumidores
-     this.prods = 0; //escritores
+     this.prods = 0; //produtores
   } 
   
   // Entrada para consumidores
   public synchronized void EntraConsumidor (int id) {
     try { 
-      while ((this.cons > 0) || (this.prods > 0)) {
+      while ((this.cons > 0) || (this.prods > 0) || MeuBuffer.getElementos() == 0) {
          System.out.println ("Consumidor " + id + " bloqueado");
          wait();  //bloqueia pela condicao logica da aplicacao 
       }
@@ -67,16 +68,16 @@ class CP {
   
   // Saida para leitores
   public synchronized void SaiConsumidor (int id) {
-     this.cons--; //registra que um leitor saiu
+     this.cons--; //registra que um consumidor saiu
      if (this.cons == 0) 
-           this.notify(); //libera escritor (caso exista escritor bloqueado)
-     System.out.println ("COnsumidor "+id+" saindo");
+           this.notifyAll(); //libera proxima thread
+     System.out.println ("Consumidor "+id+" saindo");
   }
   
   // Entrada para escritores
   public synchronized void EntraProdutor (int id) {
     try { 
-      while ((this.cons > 0) || (this.prods > 0)) {
+      while ((this.cons > 0) || (this.prods > 0) || MeuBuffer.getElementos() == 10){
          System.out.println ("Produtor "+id+" bloqueado");
          wait();  //bloqueia pela condicao logica da aplicacao 
       }
@@ -88,7 +89,7 @@ class CP {
   // Saida para escritores
   public synchronized void SaiProdutor (int id) {
      this.prods--; //registra que o produtor saiu
-     notify(); //libera a proxima thread
+     notifyAll(); //libera a proxima thread
      System.out.println ("Produtor "+id+" saindo");
   }
 }
@@ -110,14 +111,17 @@ class Consumidor extends Thread {
 
   // Método executado pela thread
   public void run () {
-    this.monitor.EntraConsumidor(this.id);
-    MeuBuffer.arr[indice] = -1;
-    this.monitor.SaiConsumidor(this.id);
+    for(;CP.contador < 100;){
+      this.monitor.EntraConsumidor(this.id);
+      MeuBuffer.retirar(indice);
+      this.monitor.SaiConsumidor(this.id);
+      CP.contador++;
+    }
   }
 }
 
 //--------------------------------------------------------
-// Escritor
+// Produtor
 class Produtor extends Thread {
   int id; //identificador da thread
   int elemento;
@@ -134,9 +138,12 @@ class Produtor extends Thread {
 
   // Método executado pela thread
   public void run () {
-    this.monitor.EntraProdutor(this.id); 
-    MeuBuffer.arr[indice] = elemento;
-    this.monitor.SaiProdutor(this.id);
+    for(;CP.contador < 100;){
+      this.monitor.EntraProdutor(this.id); 
+      MeuBuffer.inserir(indice, elemento);
+      this.monitor.SaiProdutor(this.id);
+      CP.contador++;
+    }
   }
 }
 
@@ -168,16 +175,16 @@ class ConsumidorProdutor {
        p[i] = new Produtor(i+1, indice, elemento, monitor);
        p[i].start(); 
     }
+
     for (i=0; i<C; i++) {
       try{c[i].join();}
-      catch(InterruptedException e){return;}
-
+      catch(InterruptedException e){return;};
+       
    }
    for (i=0; i<P; i++) {
     try{p[i].join();}
-    catch(InterruptedException e){return;}
+    catch(InterruptedException e){return;};
    }
-    MeuBuffer.printar();
+    MeuBuffer.print();
   }
-
 }
