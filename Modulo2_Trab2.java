@@ -29,10 +29,12 @@ public class QuickSort extends RecursiveTask<Integer> {
 
 		// inicio da divisao
 		while (i_ <= f_) { 
+			//coloca os elementos menores que o pivô na esquerda
 			if (arr[i_] <= arr[fim]) { 
 				i_++; 
 				continue; 
-			} 
+			}
+			//coloca os elementos maiores que o pivô na direita
 			if (arr[f_] >= arr[fim]) { 
 				f_--; 
 				continue; 
